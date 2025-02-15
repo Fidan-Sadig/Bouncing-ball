@@ -1,0 +1,88 @@
+# Importing the necessary libraries
+import cv2
+import numpy as np
+import random
+
+# Game window dimensions
+width, height = 500, 300
+ball_radius = 10
+racket_width, racket_height = 100, 10
+
+# Colors (BGR format)
+ball_color = (0, 0, 255)     # Red ball
+racket_color = (255, 255, 255)  # White racket
+bg_color = (0, 0, 0)          # Black background
+
+# Ball properties
+ball_pos = [width // 2, height // 2]
+ball_speed = [random.choice([-4, 4]), random.choice([-4, 4])]  # Random initial speed
+
+# Racket properties
+racket_pos = [width // 2 - racket_width // 2, height - racket_height - 10]
+
+# Number of allowed falls before game over, I set 1 but we can change/increase te number
+max_falls = 1
+current_falls = 0
+
+# Function to detect ball collision with racket
+def ball_hits_racket(ball_pos, racket_pos, racket_width, racket_height):
+    if (racket_pos[1] <= ball_pos[1] + ball_radius <= racket_pos[1] + racket_height) and \
+       (racket_pos[0] <= ball_pos[0] <= racket_pos[0] + racket_width):
+        return True
+    return False
+
+# Mouse callback to move the racket
+def move_racket(event, x, y, flags, param):
+    if event == cv2.EVENT_MOUSEMOVE:
+        racket_pos[0] = max(0, min(x - racket_width // 2, width - racket_width))  # Keep racket within bounds
+
+# Creating a window and seting mouse callback
+cv2.namedWindow("Bouncing Ball Game")
+cv2.setMouseCallback("Bouncing Ball Game", move_racket)
+
+while current_falls < max_falls:
+    # Creating a black background
+    frame = np.zeros((height, width, 3), dtype=np.uint8)
+
+    # Updating ball position
+    ball_pos[0] += ball_speed[0]
+    ball_pos[1] += ball_speed[1]
+
+    # Ball collision with walls (left, right, and top)
+    if ball_pos[0] <= ball_radius or ball_pos[0] >= width - ball_radius:
+        ball_speed[0] *= -1
+    if ball_pos[1] <= ball_radius:
+        ball_speed[1] *= -1
+
+    # Ball collision with racket
+    if ball_hits_racket(ball_pos, racket_pos, racket_width, racket_height):
+        ball_speed[1] *= -1
+
+    # Checking if the ball has fallen off the bottom
+    if ball_pos[1] > height:
+        current_falls += 1
+        print(f"Fall {current_falls}/{max_falls}")
+        ball_pos = [width // 2, height // 2]  # Reset ball position
+        # Randomize the ball speed and direction again after each fall
+        ball_speed = [random.choice([-4, 4]), random.choice([-4, 4])]
+
+        if current_falls >= max_falls:
+            print("Game Over!")
+            break
+
+    # Drawing the ball
+    cv2.circle(frame, (int(ball_pos[0]), int(ball_pos[1])), ball_radius, ball_color, -1)
+
+    # Drawing the racket
+    cv2.rectangle(frame, (racket_pos[0], racket_pos[1]), 
+                  (racket_pos[0] + racket_width, racket_pos[1] + racket_height), racket_color, -1)
+
+    # Showing the frame
+    cv2.imshow("Bouncing Ball Game", frame)
+
+    # Exiting on 'q' key
+    if cv2.waitKey(30) & 0xFF == ord('q'):
+        break
+
+# Releasing the resources
+cv2.destroyAllWindows()
